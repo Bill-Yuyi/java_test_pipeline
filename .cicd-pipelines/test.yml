@@ -2,7 +2,7 @@ name: Push to Main Pipeline
 
 global:
   registry: "docker.io"
-  image: "openjdk:17"
+  image: "openjdk:17-jdk-buster"
   workspace: 'BinaryTree/**'
   artifacts: "/artifacts"
 
