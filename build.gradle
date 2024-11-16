@@ -3,7 +3,6 @@ plugins {
     id 'checkstyle'
     id 'jacoco'
     id 'maven-publish'
-    id 'signing'
 }
 
 group = 'io.github.bill-yuyi'
@@ -113,41 +112,23 @@ publishing {
     }
 }
 
-signing {
-    useGpgCmd()
-    sign publishing.publications.mavenJava
-}
-
 task generateChecksums {
     doLast {
         def m2Repo = file(System.getProperty("user.home") + "/.m2/repository/io/github/bill-yuyi/hw3-Bill-Yuyi/0.1.0")
         def filesToChecksum = []
 
-        // Include the POM and module files if they exist in the local Maven repository
         def pomFile = new File(m2Repo, "hw3-Bill-Yuyi-0.1.0.pom")
         def moduleFile = new File(m2Repo, "hw3-Bill-Yuyi-0.1.0.module")
         def jarFile = new File(m2Repo, "hw3-Bill-Yuyi-0.1.0.jar")
         def sourceFile = new File(m2Repo, "hw3-Bill-Yuyi-0.1.0-sources.jar")
         def javadocFile = new File(m2Repo, "hw3-Bill-Yuyi-0.1.0-javadoc.jar")
 
-        if (pomFile.exists()) {
-            filesToChecksum << pomFile
-        }
-        if (moduleFile.exists()) {
-            filesToChecksum << moduleFile
-        }
-        if (jarFile.exists()) {
-            filesToChecksum << jarFile
-        }
+        if (pomFile.exists()) filesToChecksum << pomFile
+        if (moduleFile.exists()) filesToChecksum << moduleFile
+        if (jarFile.exists()) filesToChecksum << jarFile
+        if (sourceFile.exists()) filesToChecksum << sourceFile
+        if (javadocFile.exists()) filesToChecksum << javadocFile
 
-        if (sourceFile.exists()) {
-            filesToChecksum << sourceFile
-        }
-        if (javadocFile.exists()) {
-            filesToChecksum << javadocFile
-        }
-
-        // Generate checksums (MD5, SHA-1) and GPG signatures (ASC)
         filesToChecksum.each { file ->
             ['MD5', 'SHA-1'].each { algorithm ->
                 def checksum = generateChecksum(file, algorithm)
@@ -155,31 +136,16 @@ task generateChecksums {
                 checksumFile.text = checksum
                 println "Generated ${algorithm} checksum for ${file.name}: ${checksum}"
             }
-
-            // Generate .asc GPG signature
-            def ascFile = new File("${file.path}.asc")
-            def signCommand = ["gpg", "--batch", "--yes", "--armor", "--output", ascFile.absolutePath, "--detach-sign", file.absolutePath]
-            def process = signCommand.execute()
-            process.waitFor()
-            if (process.exitValue() == 0) {
-                println "Generated GPG signature for ${file.name}"
-            } else {
-                println "Error generating GPG signature for ${file.name}: ${process.err.text}"
-            }
         }
     }
 }
 
 def generateChecksum(File file, String algorithm) {
     def digest = java.security.MessageDigest.getInstance(algorithm)
-    file.eachByte 4096, { bytes, size ->
-        digest.update(bytes, 0, size)
-    }
+    file.eachByte 4096, { bytes, size -> digest.update(bytes, 0, size) }
     return digest.digest().encodeHex().toString()
 }
 
-// Hook the checksum and signing task into the local Maven publishing process
 tasks.withType(PublishToMavenLocal) {
     finalizedBy generateChecksums
 }
-
